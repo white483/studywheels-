@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#10131b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="学习转盘">
+<title>学习幸运转盘</title>
+<style>
+*{box-sizing:border-box}
+:root{
+  --bg:#10131b;--panel:#191e2b;--panel2:#22283a;--text:#f5f7fb;
+  --muted:#9ca5b7;--gold:#ffd166;--green:#4fd18b;--red:#ff6675;
+  --line:#30384c;
+}
+body{
+  margin:0;background:radial-gradient(circle at top,#20263a 0,#10131b 48%);
+  color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Microsoft YaHei",sans-serif;
+  padding:24px;min-height:100vh;
+}
+.wrap{max-width:760px;margin:auto}
+.title{text-align:center;font-size:30px;font-weight:800;color:var(--gold);margin:4px 0 6px}
+.desc{text-align:center;color:var(--muted);margin-bottom:22px}
+.card{background:rgba(25,30,43,.94);border:1px solid var(--line);border-radius:18px;padding:20px;margin-bottom:16px;box-shadow:0 12px 35px #0003}
+.rotateBox{position:relative;width:min(360px,82vw);height:min(360px,82vw);margin:0 auto}
+#wheel{width:100%;height:100%;border-radius:50%;box-shadow:0 0 35px #ffd16633;transform:rotate(0deg)}
+.pointer{
+  position:absolute;top:-7px;left:50%;transform:translateX(-50%);
+  width:0;height:0;border-left:15px solid transparent;border-right:15px solid transparent;
+  border-top:38px solid var(--red);z-index:5;filter:drop-shadow(0 3px 4px #0008)
+}
+.centerDot{
+  position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);
+  width:42px;height:42px;border-radius:50%;background:#111724;border:5px solid #fff;
+  z-index:4;box-shadow:0 2px 10px #0008
+}
+.btns{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-top:18px}
+button{
+  border:0;border-radius:11px;padding:11px 18px;font-size:15px;font-weight:750;
+  cursor:pointer;transition:.15s transform,.15s opacity
+}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.45;cursor:not-allowed}
+.primary{background:var(--gold);color:#111}
+.green{background:var(--green);color:#102017}
+.secondary{background:#3a4254;color:#fff}
+.danger{background:#5a3037;color:#fff}
+.result{text-align:center;font-size:23px;font-weight:800;color:var(--gold);min-height:32px;margin-top:14px}
+.weightList{display:flex;justify-content:center;gap:8px;flex-wrap:wrap;margin-top:13px}
+.badge{padding:6px 10px;border-radius:99px;background:var(--panel2);font-size:13px;color:#dbe1ec}
+.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:5px}
+.timer{text-align:center;font-size:54px;font-variant-numeric:tabular-nums;font-weight:800;letter-spacing:2px;margin:8px 0}
+.timerTask{text-align:center;color:var(--muted);min-height:22px}
+.inputRow{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;margin-top:10px}
+input,textarea{
+  border:1px solid var(--line);outline:0;background:var(--panel2);color:#fff;border-radius:9px;
+  padding:11px;font-size:15px
+}
+#timeInput{width:150px}
+textarea{width:100%;min-height:110px;resize:vertical}
+.sectionTitle{font-size:18px;font-weight:800;color:var(--gold);margin-bottom:12px}
+.statsGrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stat{background:var(--panel2);border-radius:12px;padding:12px}
+.statName{font-weight:750}.statValue{font-size:20px;margin-top:5px}.bar{height:7px;background:#111724;border-radius:99px;margin-top:8px;overflow:hidden}
+.fill{height:100%;border-radius:99px}
+.compare{margin-top:13px;color:var(--muted);font-size:14px;line-height:1.65}
+.log{padding:10px 0;border-bottom:1px solid var(--line);line-height:1.55}
+.log:last-child{border-bottom:0}
+.logTime{color:var(--muted);font-size:12px}.logTask{font-weight:800;color:#fff}
+.empty{color:var(--muted);text-align:center;padding:15px}
+.small{font-size:12px;color:var(--muted);text-align:center;margin-top:8px}
+@media(max-width:520px){
+  body{padding:14px}.card{padding:15px}.title{font-size:26px}.timer{font-size:44px}
+  .statsGrid{grid-template-columns:1fr}
+}
+</style>
+
+<style>
+/* ===== iPhone / Safari 专用优化 ===== */
+html{
+  -webkit-text-size-adjust:100%;
+  overscroll-behavior-y:none;
+}
+body{
+  padding:
+    max(14px, env(safe-area-inset-top))
+    max(12px, env(safe-area-inset-right))
+    max(20px, env(safe-area-inset-bottom))
+    max(12px, env(safe-area-inset-left));
+  min-height:100svh;
+  -webkit-tap-highlight-color:transparent;
+}
+button,input,textarea{
+  -webkit-appearance:none;
+  appearance:none;
+}
+button{
+  min-height:46px;
+  touch-action:manipulation;
+}
+input,textarea{
+  font-size:16px; /* 防止 iOS Safari 聚焦时自动放大 */
+}
+.wrap{
+  width:100%;
+  max-width:520px;
+}
+.title{
+  font-size:27px;
+  margin-top:4px;
+}
+.desc{
+  font-size:13px;
+  line-height:1.5;
+  margin-bottom:16px;
+}
+.card{
+  padding:15px;
+  border-radius:16px;
+  margin-bottom:12px;
+}
+.rotateBox{
+  width:min(84vw,340px);
+  height:min(84vw,340px);
+}
+.pointer{
+  top:-5px;
+}
+.result{
+  font-size:21px;
+}
+.btns{
+  gap:8px;
+}
+.btns button{
+  flex:1 1 auto;
+}
+.inputRow{
+  display:grid;
+  grid-template-columns:1fr 1fr;
+}
+#timeInput{
+  width:100%;
+  min-height:46px;
+}
+#startTimer{
+  width:100%;
+}
+#pauseTimer,#resetTimer{
+  width:100%;
+}
+.timer{
+  font-size:50px;
+  margin:4px 0 7px;
+}
+.timerTask{
+  font-size:14px;
+}
+.statsGrid{
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.stat{
+  padding:11px;
+}
+.statValue{
+  font-size:18px;
+}
+textarea{
+  min-height:125px;
+}
+.log{
+  padding:12px 2px;
+}
+.small{
+  line-height:1.5;
+}
+@media(max-width:380px){
+  .title{font-size:24px}
+  .rotateBox{width:78vw;height:78vw}
+  .timer{font-size:44px}
+  .statsGrid{grid-template-columns:1fr}
+}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="title">🎡 学习幸运转盘</div>
+  <div class="desc">本学期资源权重：本科 5｜英语 3｜计算机 2｜自媒体 2</div>
+
+  <div class="card">
+    <div class="rotateBox">
+      <div class="pointer"></div>
+      <canvas id="wheel" width="360" height="360"></canvas>
+      <div class="centerDot"></div>
+    </div>
+    <div class="btns">
+      <button id="spinBtn" class="primary">转动转盘</button>
+    </div>
+    <div class="result" id="resultText">等待抽取...</div>
+    <div class="weightList" id="weightList"></div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">⏱ 专注计时</div>
+    <div class="timerTask" id="timerTask">请先抽取一个学习项目</div>
+    <div class="timer" id="timerShow">--:--</div>
+    <div class="inputRow">
+      <input id="timeInput" type="number" min="1" max="1440" placeholder="专注分钟数，例如 30">
+      <button id="startTimer" class="green">启动</button>
+      <button id="pauseTimer" class="secondary" disabled>暂停</button>
+      <button id="resetTimer" class="danger" disabled>放弃</button>
+    </div>
+    <div class="small">iPhone Safari 适配版 · 计时期间可切换标签页；历史记录保存在本机浏览器。</div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">📊 实际投入 vs 计划权重</div>
+    <div class="statsGrid" id="statsGrid"></div>
+    <div class="compare" id="compareText"></div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">📝 本次打卡</div>
+    <div id="checkinInfo" class="timerTask">完成一次计时后，在这里记录你实际做了什么。</div>
+    <textarea id="logTextarea" placeholder="例如：完成高数极限第1章习题 8 题；今天状态一般，但实际专注了 30 分钟。"></textarea>
+    <div class="btns">
+      <button id="saveLog" class="primary">保存记录</button>
+      <button id="clearLog" class="danger">清空全部日志</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="sectionTitle">📋 历史打卡</div>
+    <div id="logList"></div>
+  </div>
+</div>
+
+<script>
+const sectors=[
+  {label:"本科学业",color:"#ff7c7c",weight:5},
+  {label:"英语",color:"#7cc6ff",weight:3},
+  {label:"计算机",color:"#90ffb7",weight:2},
+  {label:"自媒体",color:"#ffd07c",weight:2}
+];
+const totalWeight=sectors.reduce((s,x)=>s+x.weight,0);
+const canvas=document.getElementById("wheel");
+const ctx=canvas.getContext("2d");
+const spinBtn=document.getElementById("spinBtn");
+const resultText=document.getElementById("resultText");
+const timerShow=document.getElementById("timerShow");
+const timerTask=document.getElementById("timerTask");
+const timeInput=document.getElementById("timeInput");
+const startTimer=document.getElementById("startTimer");
+const pauseTimer=document.getElementById("pauseTimer");
+const resetTimer=document.getElementById("resetTimer");
+const logTextarea=document.getElementById("logTextarea");
+const saveLog=document.getElementById("saveLog");
+const clearLog=document.getElementById("clearLog");
+const logList=document.getElementById("logList");
+const checkinInfo=document.getElementById("checkinInfo");
+const statsGrid=document.getElementById("statsGrid");
+const compareText=document.getElementById("compareText");
+
+let currentRotation=0, selectedItem=null, spinning=false;
+let timerId=null, remainingSec=0, totalSessionSec=0, elapsedSec=0, paused=false;
+let pendingSession=null;
+
+function drawWheel(){
+  ctx.clearRect(0,0,360,360);
+  let start=-Math.PI/2;
+  sectors.forEach(item=>{
+    const rad=item.weight/totalWeight*Math.PI*2;
+    ctx.beginPath();ctx.moveTo(180,180);ctx.arc(180,180,180,start,start+rad);
+    ctx.closePath();ctx.fillStyle=item.color;ctx.fill();
+    ctx.strokeStyle="#111724";ctx.lineWidth=2;ctx.stroke();
+    ctx.save();ctx.translate(180,180);ctx.rotate(start+rad/2);
+    ctx.fillStyle="#10131b";ctx.font="800 17px sans-serif";ctx.textAlign="right";
+    ctx.textBaseline="middle";ctx.fillText(item.label,160,0);ctx.restore();
+    start+=rad;
+  });
+}
+drawWheel();
+
+function renderWeights(){
+  document.getElementById("weightList").innerHTML=sectors.map(s=>
+    `<span class="badge"><i class="dot" style="background:${s.color}"></i>${s.label} ${s.weight}</span>`
+  ).join("");
+}
+renderWeights();
+
+function pickWeighted(){
+  let r=Math.random()*totalWeight;
+  for(const s of sectors){r-=s.weight;if(r<0)return s;}
+  return sectors[sectors.length-1];
+}
+
+function angleForItem(item){
+  // 指针位于正上方；让被抽中的扇区中心精确停在指针下方
+  let startDeg=0;
+  for(const s of sectors){
+    const size=s.weight/totalWeight*360;
+    if(s===item)return startDeg+size/2;
+    startDeg+=size;
+  }
+  return 0;
+}
+
+spinBtn.onclick=()=>{
+  if(spinning)return;
+  spinning=true;spinBtn.disabled=true;
+  selectedItem=pickWeighted();
+  const targetCenter=angleForItem(selectedItem);
+  // 当前 canvas 的视觉角度 = currentRotation + 扇区中心角度。
+  // 目标是中心落到正上方(0deg)，所以旋转到 -targetCenter。
+  const normalized=((currentRotation+targetCenter)%360+360)%360;
+  const delta=360*6+(360-normalized);
+  currentRotation+=delta;
+  canvas.style.transition="transform 4s cubic-bezier(.15,.85,.2,1)";
+  canvas.style.transform=`rotate(${currentRotation}deg)`;
+  setTimeout(()=>{
+    resultText.textContent=`👉 抽到：${selectedItem.label}`;
+    timerTask.textContent=`当前任务：${selectedItem.label}`;
+    spinning=false;spinBtn.disabled=false;
+  },4000);
+};
+
+function formatTime(sec){
+  sec=Math.max(0,Math.floor(sec));
+  return `${String(Math.floor(sec/60)).padStart(2,"0")}:${String(sec%60).padStart(2,"0")}`;
+}
+function updateTimerDisplay(){timerShow.textContent=formatTime(remainingSec);}
+
+function finishTimer(){
+  clearInterval(timerId);timerId=null;paused=false;
+  elapsedSec=totalSessionSec;
+  remainingSec=0;updateTimerDisplay();
+  pauseTimer.disabled=true;resetTimer.disabled=false;startTimer.disabled=false;
+  pendingSession={task:selectedItem?.label||"未分类",duration:totalSessionSec};
+  checkinInfo.textContent=`⏰ 时间到！本次：${pendingSession.task}｜专注 ${formatTime(pendingSession.duration)}。请填写完成内容后保存。`;
+  checkinInfo.style.color="#ffd166";
+  alert(`时间到！\n${pendingSession.task} · ${formatTime(pendingSession.duration)}\n请填写打卡记录。`);
+}
+
+startTimer.onclick=()=>{
+  if(timerId)return;
+  if(!selectedItem)return alert("请先转动转盘抽取一个学习项目！");
+  let min=Number(timeInput.value);
+  if(!min||min<=0||min>1440)return alert("请输入 1～1440 分钟。");
+  totalSessionSec=Math.floor(min*60);
+  remainingSec=totalSessionSec;paused=false;pendingSession=null;
+  timerTask.textContent=`当前任务：${selectedItem.label}`;
+  checkinInfo.textContent="计时结束后会自动生成本次打卡信息。";
+  startTimer.disabled=true;pauseTimer.disabled=false;resetTimer.disabled=false;
+  updateTimerDisplay();
+  timerId=setInterval(()=>{
+    remainingSec--;
+    updateTimerDisplay();
+    if(remainingSec<=0)finishTimer();
+  },1000);
+};
+
+pauseTimer.onclick=()=>{
+  if(!timerId)return;
+  clearInterval(timerId);timerId=null;paused=true;
+  pauseTimer.textContent="继续";
+  pauseTimer.onclick=resumeTimer;
+  checkinInfo.textContent="已暂停。点击“继续”恢复计时，或“放弃”结束本次计时。";
+};
+function resumeTimer(){
+  pauseTimer.onclick=pauseTimerHandler;
+  paused=false;
+  pauseTimer.textContent="暂停";
+  timerId=setInterval(()=>{
+    remainingSec--;updateTimerDisplay();
+    if(remainingSec<=0)finishTimer();
+  },1000);
+}
+function pauseTimerHandler(){
+  if(!timerId)return;
+  clearInterval(timerId);timerId=null;paused=true;
+  pauseTimer.textContent="继续";pauseTimer.onclick=resumeTimer;
+}
+pauseTimer.onclick=pauseTimerHandler;
+
+resetTimer.onclick=()=>{
+  if(!confirm("确定放弃当前计时？本次不会计入统计。"))return;
+  clearInterval(timerId);timerId=null;remainingSec=0;totalSessionSec=0;pendingSession=null;
+  updateTimerDisplay();startTimer.disabled=false;pauseTimer.disabled=true;resetTimer.disabled=true;
+  pauseTimer.textContent="暂停";pauseTimer.onclick=pauseTimerHandler;
+  checkinInfo.textContent="本次计时已放弃。";
+};
+
+function getLogs(){return JSON.parse(localStorage.getItem("studyWheelLogV2")||"[]");}
+function setLogs(arr){localStorage.setItem("studyWheelLogV2",JSON.stringify(arr));}
+
+function loadLogs(){
+  const arr=getLogs();
+  if(!arr.length){logList.innerHTML='<div class="empty">还没有打卡记录。</div>';return;}
+  logList.innerHTML=arr.slice().reverse().map((i,index)=>
+    `<div class="log">
+      <div class="logTime">${escapeHtml(i.time)} · ${escapeHtml(formatTime(i.duration))}</div>
+      <div class="logTask">${escapeHtml(i.task)}</div>
+      <div>${escapeHtml(i.content)}</div>
+    </div>`
+  ).join("");
+}
+function escapeHtml(str){
+  return String(str).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+}
+
+saveLog.onclick=()=>{
+  const content=logTextarea.value.trim();
+  if(!content)return alert("请填写这段时间实际完成的内容。");
+  if(!pendingSession)return alert("请先完成一次倒计时，再保存打卡。");
+  const arr=getLogs();
+  arr.push({
+    time:new Date().toLocaleString(),
+    task:pendingSession.task,
+    duration:pendingSession.duration,
+    content
+  });
+  setLogs(arr);
+  logTextarea.value="";
+  checkinInfo.textContent="✅ 本次打卡已保存。可以再次转动转盘。";
+  checkinInfo.style.color="#4fd18b";
+  pendingSession=null;
+  loadLogs();renderStats();
+};
+
+clearLog.onclick=()=>{
+  if(!confirm("确定清空全部历史打卡？此操作不可恢复。"))return;
+  localStorage.removeItem("studyWheelLogV2");loadLogs();renderStats();
+};
+
+function renderStats(){
+  const arr=getLogs();
+  const totals={};sectors.forEach(s=>totals[s.label]=0);
+  arr.forEach(i=>{if(totals[i.task]!==undefined)totals[i.task]+=Number(i.duration)||0;});
+  const total=Object.values(totals).reduce((a,b)=>a+b,0);
+  statsGrid.innerHTML=sectors.map(s=>{
+    const sec=totals[s.label], pct=total?sec/total*100:0;
+    const target=s.weight/totalWeight*100;
+    return `<div class="stat">
+      <div class="statName">${s.label}</div>
+      <div class="statValue">${formatTime(sec)} <span style="font-size:12px;color:#9ca5b7">/ 实际 ${pct.toFixed(1)}%</span></div>
+      <div class="bar"><div class="fill" style="width:${Math.min(100,pct)}%;background:${s.color}"></div></div>
+      <div style="font-size:12px;color:#9ca5b7;margin-top:5px">计划 ${target.toFixed(1)}%</div>
+    </div>`;
+  }).join("");
+  if(!total){
+    compareText.textContent="完成第一次计时后，这里会显示实际投入与 5∶3∶2∶2 的偏差。";
+  }else{
+    const lines=sectors.map(s=>{
+      const pct=totals[s.label]/total*100,target=s.weight/totalWeight*100,diff=pct-target;
+      return `${s.label}：实际 ${pct.toFixed(1)}%，计划 ${target.toFixed(1)}%，${diff>=0?"超":"少"} ${Math.abs(diff).toFixed(1)} 个百分点`;
+    });
+    compareText.innerHTML=lines.join("<br>");
+  }
+}
+loadLogs();renderStats();
+</script>
+</body>
+</html>
